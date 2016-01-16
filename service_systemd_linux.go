@@ -111,7 +111,6 @@ func (s *systemd) Uninstall() error {
 	}
 	return nil
 }
-
 func (s *systemd) Logger(errs chan<- error) (Logger, error) {
 	if system.Interactive() {
 		return ConsoleLogger, nil
@@ -143,6 +142,9 @@ func (s *systemd) Start() error {
 
 func (s *systemd) Stop() error {
 	return run("systemctl", "stop", s.Name+".service")
+}
+func (s *systemd) Status() error {
+	return checkStatus("systemctl", []string{"status", s.Name + ".service"}, "active (running)", "not-found")
 }
 
 func (s *systemd) Restart() error {

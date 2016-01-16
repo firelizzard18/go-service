@@ -327,6 +327,31 @@ func (ws *windowsService) Restart() error {
 	return s.Start()
 }
 
+func (s *windowsService) Status() error {
+	m, err := mgr.Connect()
+	if err != nil {
+		return err
+	}
+	defer m.Disconnect()
+
+	s, err := m.OpenService(ws.Name)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	status, err := s.Query()
+	if err != nil {
+		return err
+	}
+
+	if status != svc.Running {
+		return ErrServiceIsNotRunning
+	}
+
+	return nil
+}
+
 func (ws *windowsService) stopWait(s *mgr.Service) error {
 	// First stop the service. Then wait for the service to
 	// actually stop before starting it.

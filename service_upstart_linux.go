@@ -134,6 +134,10 @@ func (s *upstart) Stop() error {
 	return run("initctl", "stop", s.Name)
 }
 
+func (s *upstart) Status() error {
+	return checkStatus("initctl", []string{"status", s.Name}, "start/running", "Unknown job")
+}
+
 func (s *upstart) Restart() error {
 	err := s.Stop()
 	if err != nil {
@@ -172,4 +176,3 @@ end script
 # http://upstart.ubuntu.com/cookbook/#changing-user
 exec start-stop-daemon --start {{if .UserName}}-c {{.UserName|cmd}}{{end}} {{if .WorkingDirectory}}-d {{.WorkingDirectory|cmd}}{{end}} --exec {{.Path}} -- {{range .Arguments}} {{.|cmd}}{{end}}
 `
-

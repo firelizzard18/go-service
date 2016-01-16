@@ -174,6 +174,10 @@ func (s *sysv) Stop() error {
 	return run("service", s.Name, "stop")
 }
 
+func (s *sysv) Status() error {
+	return checkStatus("service", []string{s.Name, "status"}, "is running", "unrecognized service")
+}
+
 func (s *sysv) Restart() error {
 	err := s.Stop()
 	if err != nil {

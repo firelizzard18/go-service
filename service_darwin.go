@@ -179,6 +179,22 @@ func (s *darwinLaunchdService) Stop() error {
 	}
 	return run("launchctl", "unload", confPath)
 }
+func (s *darwinLaunchdService) Status() error {
+	err := checkStatus("launchctl", []string{"list", s.Name}, "\"PID\"", "not find service")
+
+	// Check if this is really not installed
+	if err == ErrServiceIsNotInstalled {
+		confPath, err := s.getServiceFilePath()
+		if err != nil {
+			return err
+		}
+		_, err = os.Stat(confPath)
+		if err == nil {
+			return ErrServiceIsNotRunning
+		}
+	}
+	return err
+}
 func (s *darwinLaunchdService) Restart() error {
 	err := s.Stop()
 	if err != nil {
