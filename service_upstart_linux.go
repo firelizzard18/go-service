@@ -143,6 +143,10 @@ func (s *upstart) Stop() error {
 	return run("initctl", "stop", s.Name)
 }
 
+func (s *upstart) Status() error {
+	return checkStatus("initctl", []string{"status", s.Name}, "start/running", "Unknown job")
+}
+
 func (s *upstart) Restart() error {
 	err := s.Stop()
 	if err != nil {
@@ -170,12 +174,14 @@ respawn
 respawn limit 10 5
 umask 022
 
-console none
+console log
 
 pre-start script
     test -x {{.Path}} || { stop; exit 0; }
 end script
 
 # Start
-exec {{.Path}}{{range .Arguments}} {{.|cmd}}{{end}}
+# Due to bug in Precise Upstart this is the only way to inherit user groups
+# http://upstart.ubuntu.com/cookbook/#changing-user
+exec start-stop-daemon --start {{if .UserName}}--user {{.UserName|cmd}} -c {{.UserName|cmd}}{{else}}--user root{{end}} {{if .WorkingDirectory}}-d {{.WorkingDirectory|cmd}}{{end}} --exec {{.Path}} -- {{range .Arguments}} {{.|cmd}}{{end}}
 `

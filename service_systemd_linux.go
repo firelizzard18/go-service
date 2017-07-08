@@ -115,7 +115,6 @@ func (s *systemd) Uninstall() error {
 	}
 	return nil
 }
-
 func (s *systemd) Logger(errs chan<- error) (Logger, error) {
 	if system.Interactive() {
 		return ConsoleLogger, nil
@@ -148,6 +147,9 @@ func (s *systemd) Start() error {
 func (s *systemd) Stop() error {
 	return run("systemctl", "stop", s.Name+".service")
 }
+func (s *systemd) Status() error {
+	return checkStatus("systemctl", []string{"status", s.Name + ".service"}, "active (running)", "not-found")
+}
 
 func (s *systemd) Restart() error {
 	return run("systemctl", "restart", s.Name+".service")
@@ -155,12 +157,13 @@ func (s *systemd) Restart() error {
 
 const systemdScript = `[Unit]
 Description={{.Description}}
-ConditionFileIsExecutable={{.Path|cmdEscape}}
+After=syslog.target network.target
+ConditionFileIsExecutable={{.Path}}
 
 [Service]
 StartLimitInterval=5
 StartLimitBurst=10
-ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
+ExecStart={{.Path}}{{range .Arguments}} {{.|cmd}}{{end}}
 {{if .ChRoot}}RootDirectory={{.ChRoot|cmd}}{{end}}
 {{if .WorkingDirectory}}WorkingDirectory={{.WorkingDirectory|cmdEscape}}{{end}}
 {{if .UserName}}User={{.UserName}}{{end}}

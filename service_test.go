@@ -2,56 +2,111 @@
 // Use of this source code is governed by a zlib-style
 // license that can be found in the LICENSE file.
 
-package service_test
+package service
 
 import (
+	"log"
+	"os"
+	"runtime"
 	"testing"
-	"time"
-
-	"github.com/kardianos/service"
 )
 
-func TestRunInterrupt(t *testing.T) {
-	p := &program{}
-	sc := &service.Config{
-		Name: "go_service_test",
+const runAsServiceArg = "RunThisAsService"
+
+var sc = &Config{
+	Name:      "go_service_test",
+	Arguments: []string{runAsServiceArg},
+	Option: KeyValue{
+		"UserService": userService(),
+	},
+}
+
+func userService() bool {
+	if runtime.GOOS == "darwin" {
+		return true
+	} else {
+		return false
 	}
-	s, err := service.New(p, sc)
+}
+
+func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == runAsServiceArg {
+		runService()
+		return
+	}
+	os.Exit(m.Run())
+}
+
+func TestInstallRunRestartStopRemove(t *testing.T) {
+	p := &program{}
+	s, err := New(p, sc)
 	if err != nil {
 		t.Fatalf("New err: %s", err)
 	}
 
-	go func() {
-		<-time.After(1 * time.Second)
-		interruptProcess(t)
-	}()
+	err = s.Status()
+	if err != ErrServiceIsNotInstalled {
+		t.Fatal("status", err)
+	}
 
-	go func() {
-		for i := 0; i < 25 && p.numStopped == 0; i++ {
-			<-time.After(200 * time.Millisecond)
-		}
-		if p.numStopped == 0 {
-			t.Fatal("Run() hasn't been stopped")
-		}
-	}()
+	err = s.Install()
+	if err != nil {
+		t.Fatal("install", err)
+	}
+	defer s.Uninstall()
 
-	if err = s.Run(); err != nil {
-		t.Fatalf("Run() err: %s", err)
+	err = s.Status()
+	if err != ErrServiceIsNotRunning {
+		t.Fatal("status", err)
+	}
+
+	err = s.Start()
+	if err != nil {
+		t.Fatal("start", err)
+	}
+	err = s.Restart()
+	if err != nil {
+		t.Fatal("restart", err)
+	}
+	err = s.Stop()
+	if err != nil {
+		t.Fatal("stop", err)
+	}
+	err = s.Status()
+	if err != ErrServiceIsNotRunning {
+		t.Fatal("status", err)
+	}
+	err = s.Uninstall()
+	if err != nil {
+		t.Fatal("uninstall", err)
+	}
+	err = s.Status()
+	if err != ErrServiceIsNotInstalled {
+		t.Fatal("status", err)
 	}
 }
 
-type program struct {
-	numStopped int
+func runService() {
+	p := &program{}
+	s, err := New(p, sc)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = s.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func (p *program) Start(s service.Service) error {
+type program struct{}
+
+func (p *program) Start(s Service) error {
 	go p.run()
 	return nil
 }
 func (p *program) run() {
 	// Do work here
 }
-func (p *program) Stop(s service.Service) error {
-	p.numStopped++
+func (p *program) Stop(s Service) error {
 	return nil
 }
